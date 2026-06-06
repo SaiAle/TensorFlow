@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fast-style-transfer"
+version = "0.1.0"
+description = "Arbitrary fast neural style transfer (TF-Hub Magenta) as a CLI and library."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Sai Kumar Ale" }]
+dependencies = [
+    "tensorflow>=2.12",
+    "tensorflow-hub>=0.14",
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+webui = ["gradio>=4.0"]
+api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+
+[project.scripts]
+styletransfer = "styletransfer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that download/run the model (excluded from offline CI)",
+]
