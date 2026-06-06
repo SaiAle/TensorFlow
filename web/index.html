@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style Transfer - Creator Studio</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 24px;
+            background: #0b0b10;
+            color: #f4f4f7;
+        }
+        .wrap { max-width: 1000px; margin: 0 auto; }
+        h1 { font-size: 22px; margin: 0 0 16px; }
+        .card {
+            background: #13131a;
+            border: 1px solid #22242d;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 14px;
+        }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+        label { display: block; font-size: 13px; color: #b8b9c3; margin-bottom: 6px; }
+        input[type="text"],
+        input[type="password"],
+        select,
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            background: #0d0d13;
+            color: #f4f4f7;
+            border: 1px solid #272833;
+            border-radius: 8px;
+        }
+        button {
+            background: #1d6ee8;
+            color: white;
+            border: 0;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button.secondary { background: #23242d; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .preview { display: flex; gap: 14px; flex-wrap: wrap; }
+        .preview img { max-width: 45%; border-radius: 10px; border: 1px solid #22242d; }
+        .status { font-size: 13px; color: #b8b9c3; margin-top: 8px; }
+        .error { color: #ff8a8a; }
+        .success { color: #8aff9b; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Style Transfer Studio</h1>
+
+    <div class="card">
+        <label>API base URL</label>
+        <input id="base" type="text" value="http://localhost:8000" />
+    </div>
+
+    <div class="card">
+        <label>Content image</label>
+        <input id="content" type="file" accept="image/*" />
+    </div>
+
+    <div class="card">
+        <label>Pick a preset</label>
+        <select id="presets">
+            <option value="">-- use custom style instead --</option>
+        </select>
+        <div style="margin-top:10px">
+            <label>Custom style image</label>
+            <input id="style" type="file" accept="image/*" />
+        </div>
+        <div style="margin-top:10px; display:flex; gap:10px;">
+            <input id="presetName" type="text" placeholder="New preset name" />
+            <button id="savePreset" class="secondary">Save as preset</button>
+        </div>
+        <div id="presetStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+        <button id="run">Transfer style</button>
+        <div id="transferStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+        <label>Result preview</label>
+        <div class="preview" id="preview">
+            <div style="color:#7a7b86">No result yet</div>
+        </div>
+        <div style="margin-top:10px">
+            <a id="download" style="color:#8ab4ff; display:none;">Download PNG</a>
+        </div>
+    </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function api(path, opts = {}) {
+  const res = await fetch($('base').value + path, {
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    ...opts,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`HTTP ${res.status}: ${t}`);
+  }
+  return res.json().catch(() => ({}));
+}
+
+async function loadPresets() {
+  try {
+    const presets = await api('/presets');
+    const sel = $('presets');
+    sel.innerHTML = '<option value="">-- use custom style instead --</option>';
+    for (const p of presets) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    }
+  } catch (e) {
+    $('presetStatus').textContent = 'Could not load presets';
+    $('presetStatus').className = 'status error';
+  }
+}
+
+async function uploadFormData(path, form) {
+  const res = await fetch($('base').value + path, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`HTTP ${res.status}: ${t}`);
+  }
+  return res.json();
+}
+
+$('savePreset').addEventListener('click', async () => {
+  const styleFile = $('style').files[0];
+  const name = $('presetName').value.trim();
+  if (!styleFile || !name) {
+    $('presetStatus').textContent = 'Select a style image and enter a preset name';
+    $('presetStatus').className = 'status error';
+    return;
+  }
+  const form = new FormData();
+  form.append('style', styleFile);
+  $('presetStatus').textContent = 'Uploading style...';
+  $('presetStatus').className = 'status';
+  let styleRelPath = '';
+  try {
+    const data = await uploadFormData('/styles', form);
+    styleRelPath = data.style_rel_path;
+    if (!styleRelPath) throw new Error('Missing style_rel_path');
+  } catch (e) {
+    $('presetStatus').textContent = 'Style upload failed: ' + e.message;
+    $('presetStatus').className = 'status error';
+    return;
+  }
+  try {
+    const out = await api('/presets', {
+      method: 'POST',
+      body: JSON.stringify({ name, style_rel_path: styleRelPath }),
+    });
+    $('presetStatus').textContent = 'Saved preset: ' + out.name;
+    $('presetStatus').className = 'status success';
+    await loadPresets();
+  } catch (e) {
+    $('presetStatus').textContent = 'Preset save failed: ' + e.message;
+    $('presetStatus').className = 'status error';
+  }
+});
+
+$('run').addEventListener('click', async () => {
+  const content = $('content').files[0];
+  if (!content) {
+    $('transferStatus').textContent = 'Select a content image';
+    $('transferStatus').className = 'status error';
+    return;
+  }
+  const presetId = $('presets').value;
+  $('transferStatus').textContent = 'Running...';
+  $('transferStatus').className = 'status';
+  try {
+    let data;
+    if (presetId) {
+      const form = new FormData();
+      form.append('content', content);
+      form.append('preset_id', presetId);
+      data = await uploadFormData('/transfer/preset', form);
+    } else {
+      const style = $('style').files[0];
+      if (!style) throw new Error('Pick a preset or upload a custom style image');
+      const form = new FormData();
+      form.append('content', content);
+      form.append('style', style);
+      data = await uploadFormData('/transfer', form);
+    }
+    finish(data);
+  } catch (e) {
+    $('transferStatus').textContent = e.message;
+    $('transferStatus').className = 'status error';
+  }
+});
+
+function finish(data) {
+  $('transferStatus').textContent = 'Done — ' + (data.cached ? 'cached result' : 'fresh transfer');
+  $('transferStatus').className = 'status success';
+  $('preview').innerHTML = `<img src="${data.out}" alt="result" />`;
+  const dl = $('download');
+  dl.href = data.out;
+  dl.download = 'style-transfer.png';
+  dl.style.display = 'inline-block';
+  dl.textContent = 'Download PNG';
+}
+
+loadPresets();
+</script>
+</body>
+</html>
