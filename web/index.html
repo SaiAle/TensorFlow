@@ -102,8 +102,12 @@
 <script>
 const $ = (id) => document.getElementById(id);
 
+function baseUrl() {
+  return ($('base').value || '').replace(/\\/$/, '');
+}
+
 async function api(path, opts = {}) {
-  const res = await fetch($('base').value + path, {
+  const res = await fetch(baseUrl() + path, {
     headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
     ...opts,
   });
@@ -132,7 +136,7 @@ async function loadPresets() {
 }
 
 async function uploadFormData(path, form) {
-  const res = await fetch($('base').value + path, {
+  const res = await fetch(baseUrl() + path, {
     method: 'POST',
     body: form,
   });
@@ -212,11 +216,12 @@ $('run').addEventListener('click', async () => {
 });
 
 function finish(data) {
+  const src = (data.url || '').startsWith('http') ? data.url : baseUrl() + (data.url || '');
   $('transferStatus').textContent = 'Done — ' + (data.cached ? 'cached result' : 'fresh transfer');
   $('transferStatus').className = 'status success';
-  $('preview').innerHTML = `<img src="${data.out}" alt="result" />`;
+  $('preview').innerHTML = `<img src="${src}" alt="result" />`;
   const dl = $('download');
-  dl.href = data.out;
+  dl.href = src;
   dl.download = 'style-transfer.png';
   dl.style.display = 'inline-block';
   dl.textContent = 'Download PNG';
