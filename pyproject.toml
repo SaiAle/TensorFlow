@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "style-transfer-prototype"
+version = "0.1.0"
+description = "Prototype built from Fast Neural Arbitrary Style Transfer"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.109",
+    "tensorflow>=2.15",
+    "tensorflow-hub",
+    "pillow",
+    "python-multipart",
+    "uvicorn[standard]",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "pytest-cov",
+    "ruff",
+]
+
+[project.scripts]
+stylize = "src.cli:main"
+style-api = "src.api_serve:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

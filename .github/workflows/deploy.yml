@@ -1,0 +1,33 @@
+name: Deploy Style Transfer API
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e '.[dev]'
+    
+    - name: Run tests
+      run: |
+        pytest tests/test_core.py tests/test_worker.py -v
+    
+    - name: Deploy to Railway
+      if: github.ref == 'refs/heads/main'
+      uses: railwayapp/railway.ghaction.docker-build-push@v1
+      with:
+        railway-api-key: ${{ secrets.RAILWAY_API_KEY }}
+        service: style-transfer-api
