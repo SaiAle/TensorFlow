@@ -47,6 +47,19 @@ def load_image(source: str, image_size=(256, 256)) -> tf.Tensor:
     return img
 
 
+def load_image_bytes(data: bytes, image_size=(256, 256)) -> tf.Tensor:
+    """Decode raw image bytes (e.g. an HTTP upload) into a normalized 4-D tensor.
+
+    Same output contract as :func:`load_image`: float32 ``[1, H, W, 3]`` in ``[0, 1]``.
+    """
+    img = tf.image.decode_image(data, channels=3, expand_animations=False)
+    img = tf.image.convert_image_dtype(img, tf.float32)  # -> [0, 1]
+    img = img[tf.newaxis, ...]
+    img = crop_center(img)
+    img = tf.image.resize(img, image_size, preserve_aspect_ratio=True)
+    return img
+
+
 def preprocess_array(array, image_size=(256, 256)) -> tf.Tensor:
     """Preprocess an in-memory image (e.g. from a web UI) like :func:`load_image`.
 

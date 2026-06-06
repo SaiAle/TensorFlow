@@ -12,7 +12,7 @@ import sys
 import tensorflow as tf
 
 from .config import DEFAULT_CONTENT_SIZE, DEFAULT_STYLE_SIZE
-from .engine import load_model, stylize
+from .engine import blend_strength, load_model, stylize
 from .images import load_image, save_image
 
 _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".gif")
@@ -45,6 +45,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-style-blur", action="store_true",
         help="Skip the average-pool smoothing applied to the style image.",
     )
+    parser.add_argument(
+        "--strength", type=float, default=1.0,
+        help="Style strength in [0, 1]; 1.0 is fully stylized (default: 1.0).",
+    )
     return parser
 
 
@@ -55,6 +59,8 @@ def _run_one(content, style_source, output, args, model) -> None:
         # cleaner results.
         style = tf.nn.avg_pool(style, ksize=[3, 3], strides=[1, 1], padding="SAME")
     stylized = stylize(content, style, model=model)
+    if args.strength < 1.0:
+        stylized = blend_strength(content, stylized, args.strength)
     save_image(stylized, output)
     print(f"Saved -> {output}")
 

@@ -9,10 +9,10 @@ import tensorflow as tf
 
 from styletransfer import preprocess_array, stylize, to_numpy
 from styletransfer.config import DEFAULT_CONTENT_SIZE, DEFAULT_STYLE_SIZE
-from styletransfer.engine import load_model
+from styletransfer.engine import blend_strength, load_model
 
 
-def run(content_img, style_img, content_size, style_size, blur_style):
+def run(content_img, style_img, content_size, style_size, blur_style, strength):
     if content_img is None or style_img is None:
         raise gr.Error("Please provide both a content image and a style image.")
     content = preprocess_array(content_img, (int(content_size), int(content_size)))
@@ -20,6 +20,8 @@ def run(content_img, style_img, content_size, style_size, blur_style):
     if blur_style:
         style = tf.nn.avg_pool(style, ksize=[3, 3], strides=[1, 1], padding="SAME")
     result = stylize(content, style)
+    if strength < 1.0:
+        result = blend_strength(content, result, float(strength))
     return to_numpy(result)
 
 
@@ -33,9 +35,14 @@ def build_demo() -> gr.Blocks:
             content_size = gr.Slider(128, 768, value=DEFAULT_CONTENT_SIZE, step=32, label="Content size")
             style_size = gr.Slider(128, 512, value=DEFAULT_STYLE_SIZE, step=32, label="Style size")
             blur_style = gr.Checkbox(value=True, label="Smooth style image")
+        strength = gr.Slider(0.0, 1.0, value=1.0, step=0.05, label="Style strength")
         go = gr.Button("Stylize", variant="primary")
         output = gr.Image(label="Stylized")
-        go.click(run, [content_in, style_in, content_size, style_size, blur_style], output)
+        go.click(
+            run,
+            [content_in, style_in, content_size, style_size, blur_style, strength],
+            output,
+        )
     return demo
 
 

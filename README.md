@@ -42,6 +42,7 @@ Options:
 | `--content-size` | `384` | Content image size |
 | `--style-size` | `256` | Style image size (256 recommended) |
 | `--no-style-blur` | off | Skip style-image smoothing |
+| `--strength` | `1.0` | Style strength in `[0, 1]` (blends toward the original content) |
 
 **Batch mode** — if `style` is a directory, the content image is stylized with
 every image in it and results are written to the `-o` output directory:
@@ -55,6 +56,16 @@ styletransfer photo.jpg styles/ -o out/
 ```bash
 python -m pip install -e ".[webui]"
 python webui/app.py            # open the printed local URL
+```
+
+### HTTP API
+
+```bash
+python -m pip install -e ".[api]"
+uvicorn styletransfer.api:app --reload      # POST /stylize, docs at /docs
+
+curl -X POST "http://127.0.0.1:8000/stylize?strength=0.8" \
+  -F content=@content.jpg -F style=@style.jpg -o out.png
 ```
 
 ### Docker
@@ -89,6 +100,7 @@ src/styletransfer/
   engine.py   # load model, stylize()  — the only ML code
   images.py   # load / crop / resize / save (path, URL, or array)
   cli.py      # `styletransfer` command (single + batch mode)
+  api.py      # FastAPI service (POST /stylize)
   config.py   # model handle, sizes, cache dir
 webui/app.py  # Gradio web UI
 tests/        # offline unit tests
@@ -100,7 +112,8 @@ Dockerfile    # CPU container serving the web UI
 
 - [x] **Phase 0/1** — extract notebook → package + working CLI
 - [x] **Phase 2** — Gradio web UI, batch mode, GitHub Actions CI, Docker
-- [ ] **Phase 3** — FastAPI endpoint, Hugging Face Spaces demo, style-strength control
+- [x] **Phase 3** — FastAPI endpoint, style-strength control, integration test
+- [ ] **Stretch** — Hugging Face Spaces demo, ONNX/TFLite export
 
 ## Credits
 

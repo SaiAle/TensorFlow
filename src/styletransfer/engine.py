@@ -35,3 +35,17 @@ def stylize(content_image: tf.Tensor, style_image: tf.Tensor, model=None) -> tf.
     model = model or load_model()
     outputs = model(tf.constant(content_image), tf.constant(style_image))
     return outputs[0]
+
+
+def blend_strength(content_image: tf.Tensor, stylized_image: tf.Tensor, strength: float) -> tf.Tensor:
+    """Interpolate between the content and stylized image to control style strength.
+
+    ``strength`` of 1.0 returns the fully stylized image; 0.0 returns the
+    original content. The content image is resized to the stylized image's
+    resolution before blending.
+    """
+    if strength >= 1.0:
+        return stylized_image
+    target = tf.shape(stylized_image)[1:3]
+    content_resized = tf.image.resize(content_image, target)
+    return strength * stylized_image + (1.0 - strength) * content_resized
