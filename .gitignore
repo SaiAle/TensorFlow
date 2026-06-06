@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+
+# Project
+*.png
+*.jpg
+*.jpeg
+!examples/*.png
+!examples/*.jpg
+.cache/
